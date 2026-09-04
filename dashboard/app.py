@@ -42,8 +42,15 @@ def index():
     mode = request.args.get("mode", "live")
     trades = db.get_all_trades(mode=mode, limit=500)
     summary = db.get_summary(mode)
-    return render_template("index.html", trades=trades, summary=summary, mode=mode,
+    resp = render_template("index.html", trades=trades, summary=summary, mode=mode,
                             backtest_running=_backtest_running)
+    response = app.response_class(resp)
+    # No caching -- this page shows live trade state; a cached response
+    # (browser or any intermediate proxy/CDN) previously caused stale data
+    # to be served regardless of the ?mode= query string.
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    return response
 
 
 @app.route("/health")
