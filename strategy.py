@@ -12,6 +12,7 @@ Every signal carries a human-readable `reasoning` string that explains
 exactly which conditions fired -- this is what the dashboard shows per trade.
 """
 import config
+import event_calendar
 
 
 def generate_signal(df_with_indicators):
@@ -20,6 +21,14 @@ def generate_signal(df_with_indicators):
         return _wait("Not enough candle history yet to evaluate the strategy.", df.index[-1] if len(df) else None)
 
     last = df.iloc[-1]
+
+    # Skip new entries within the buffer window of a known high-impact US
+    # event (FOMC / CPI / NFP) -- see event_calendar.py for why and sources.
+    in_window, event_desc = event_calendar.check_event_window(df.index[-1].to_pydatetime())
+    if in_window:
+        return _wait(f"Skipping: within high-impact event window ({event_desc}). "
+                      f"Confluence strategy can't judge a news reaction, sitting out.", df.index[-1])
+
     prev = df.iloc[-2]
 
     uptrend = last["ema_fast"] > last["ema_mid"] > last["ema_slow"]
