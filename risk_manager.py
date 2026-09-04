@@ -10,14 +10,35 @@ def position_size(entry: float, sl: float, account_size: float = None, risk_pct:
     Returns size in troy ounces of gold (XAU/USD is quoted per ounce).
     risk_amount = account_size * risk_pct
     size = risk_amount / abs(entry - sl)
+
+    Two safety checks guard against a degenerate ATR/SL blowing this up
+    (seen live: a near-zero-volatility candle produced a 0.41-point SL
+    distance, which the naive formula turned into a 243oz / ~97x-leverage
+    position):
+      1. If the SL distance is below MIN_SL_DISTANCE_PCT of price, the
+         trade is REJECTED (returns 0) -- a stop that tight almost always
+         means the volatility reading was an anomaly, not a real setup.
+      2. Otherwise, the resulting notional position value is hard-capped
+         at MAX_POSITION_VALUE_MULTIPLE x account size as a backstop.
     """
     account_size = account_size or config.ACCOUNT_SIZE
     risk_pct = risk_pct if risk_pct is not None else config.RISK_PCT
     distance = abs(entry - sl)
     if distance <= 0:
         return 0.0
+
+    min_distance = entry * config.MIN_SL_DISTANCE_PCT
+    if distance < min_distance:
+        return 0.0  # reject: SL too tight relative to price, likely a volatility anomaly
+
     risk_amount = account_size * risk_pct
     size_oz = risk_amount / distance
+
+    max_notional = config.MAX_POSITION_VALUE_MULTIPLE * account_size
+    notional = size_oz * entry
+    if notional > max_notional:
+        size_oz = max_notional / entry
+
     return round(size_oz, 4)
 
 

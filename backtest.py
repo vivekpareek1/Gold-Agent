@@ -15,6 +15,7 @@ MODE = config.MODE_BACKTEST
 
 def run_backtest(outputsize=5000):
     db.init_db()
+    db.clear_trades(MODE)  # wipe any previous backtest run so results never mix
 
     print(f"Fetching up to {outputsize} historical {config.INTERVAL} candles for {config.SYMBOL}...")
     df = data_fetcher.get_candles(outputsize=outputsize)

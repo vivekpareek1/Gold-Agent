@@ -156,6 +156,18 @@ def get_all_trades(mode=None, limit=500):
         conn.close()
 
 
+def clear_trades(mode):
+    """Deletes all trades for a given mode. Used before re-running a backtest
+    so results never mix an old (possibly buggy) run with a new one."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"DELETE FROM {config.DB_SCHEMA}.trades WHERE mode=%s;", (mode,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_summary(mode):
     conn = get_connection()
     try:

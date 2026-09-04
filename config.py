@@ -68,3 +68,9 @@ MAX_BACKTEST_LLM_CALLS = 800
 # since Render's free tier has no cron job support) ---
 RUN_TOKEN = os.environ.get("RUN_TOKEN", "")
 
+
+# --- Position sizing safety limits (added after a live anomaly: a near-zero
+# ATR candle produced a 0.41-point SL distance, which the naive risk_amount/
+# distance formula blew up into a 243oz / ~97x-leverage position) ---
+MIN_SL_DISTANCE_PCT = 0.0015  # SL must be at least 0.15% of entry price away, else reject the trade
+MAX_POSITION_VALUE_MULTIPLE = 8.0  # hard cap: notional position value <= 8x account size
