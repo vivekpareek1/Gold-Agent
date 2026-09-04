@@ -58,6 +58,20 @@ def health():
     return {"status": "ok"}
 
 
+@app.route("/debug-modes")
+def debug_modes():
+    if not _check_token():
+        return jsonify({"error": "unauthorized"}), 403
+    conn = db.get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT id, mode, direction, entry_time::text FROM {config.DB_SCHEMA}.trades ORDER BY id;")
+            rows = cur.fetchall()
+        return jsonify({"rows": [{"id": r[0], "mode": r[1], "direction": r[2], "entry_time": r[3]} for r in rows]})
+    finally:
+        conn.close()
+
+
 @app.route("/run-check")
 def run_check():
     if not _check_token():
@@ -87,21 +101,3 @@ def run_backtest_route():
 
     def _run():
         global _backtest_running
-        import backtest
-        try:
-            backtest.run_backtest()
-        except Exception as e:
-            print(f"Backtest thread error: {e}")
-        finally:
-            _backtest_running = False
-
-    threading.Thread(target=_run, daemon=True).start()
-    return jsonify({"status": "started",
-                     "message": "Backtest started in background. Watch the Backtest tab -- "
-                                "trades will appear there as they're simulated. "
-                                "Takes roughly 20-30 minutes."})
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
